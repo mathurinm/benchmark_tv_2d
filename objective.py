@@ -3,6 +3,7 @@ from benchopt import safe_import_context
 
 with safe_import_context() as import_ctx:
     import numpy as np
+    import torch
     from benchmark_utils.shared import huber
     from benchmark_utils.matrix_op import grad
 
@@ -20,19 +21,15 @@ class Objective(BaseObjective):
         'data_fit': ["lsq", "huber"],
     }
 
-    def __init__(self, reg=0.02, delta=0.1,
-                 isotropy="anisotropic", data_fit="lsq"):
-        self.reg = reg
-        self.delta = delta
-        self.isotropy = isotropy
-        self.data_fit = data_fit
-
-    def set_data(self, A, y):
+    def set_data(self, x_true, type_A, A, y, Anorm2):
         self.A = A
         self.y = y
+        self.Anorm2 = Anorm2
+        self.x_true = x_true
+        self.type_A = type_A
 
-    def evaluate_result(self, u):
-        R = self.y - self.A @ u  # residuals
+    def evaluate_result(self, name, u):
+        R = self.y - self.A @ u
 
         if self.data_fit == "lsq":
             loss = .5 * np.linalg.norm(R) ** 2
@@ -51,6 +48,7 @@ class Objective(BaseObjective):
 
     def get_objective(self):
         return dict(A=self.A,
+                    Anorm2=self.Anorm2,
                     reg=self.reg,
                     delta=self.delta,
                     data_fit=self.data_fit,
@@ -64,3 +62,7 @@ class Objective(BaseObjective):
     def anisotropic_tv_value(self, u):
         gh, gv = grad(u)
         return (np.abs(gh) + np.abs(gv)).sum()
+
+    def save_final_results(self, name, u):
+        return [name+f', type_A = {self.type_A}', self.y, self.x_true,
+                torch.from_numpy(u)]

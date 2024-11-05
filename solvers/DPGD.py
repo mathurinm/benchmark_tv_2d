@@ -15,9 +15,6 @@ class Solver(BaseSolver):
     """Dual Projected gradient descent for analysis formulation."""
     name = 'Dual PGD analysis'
 
-    # atol/rtol params of scipy.sparse.linalg.cg need scipy 1.14
-    requirements = ["scipy>=1.14"]
-
     stopping_criterion = SufficientDescentCriterion(
         patience=3, strategy="callback"
     )
@@ -27,7 +24,7 @@ class Solver(BaseSolver):
                   'ratio': [10.],
                   'use_acceleration': [True]}
 
-    def skip(self, A, reg, delta, data_fit, y, isotropy):
+    def skip(self, A, Anorm2, reg, delta, data_fit, y, isotropy):
         if data_fit == 'huber':
             return True, "solver does not work with huber loss"
         elif max(y.shape) > 1e4:
@@ -38,7 +35,7 @@ class Solver(BaseSolver):
             return True, "solver only works for denoising"
         return False, None
 
-    def set_objective(self, A, reg, delta, data_fit, y, isotropy):
+    def set_objective(self, A, Anorm2, reg, delta, data_fit, y, isotropy):
         self.reg, self.delta = reg, delta
         self.isotropy = isotropy
         self.data_fit = data_fit
@@ -47,8 +44,8 @@ class Solver(BaseSolver):
     def run(self, callback):
         n, m = self.y.shape
         # initialisation
-        u = np.zeros((n, m))
         self.u = np.zeros((n, m))
+        u = np.zeros((n, m))
         v = np.zeros((n, m))
         vh = np.zeros((n, m))  # we consider non-cyclic finite difference
         vv = np.zeros((n, m))
@@ -84,7 +81,7 @@ class Solver(BaseSolver):
                 vv[:] = vv_acc
 
             v_tmp = (Aty + div(vh, vv)).flatten()
-            v, _ = cg(AtA, v_tmp, x0=v.flatten(), atol=tol_cg)
+            v, _ = cg(AtA, v_tmp, x0=v.flatten(), tol=tol_cg)
             v = v.reshape((n, m))
             gh, gv = grad(v)
             vh, vv = proj(vh + sigma_v * gh,
@@ -97,7 +94,7 @@ class Solver(BaseSolver):
                 vv_acc[:] = vv + (t_old - 1.) / t_new * (vv - vv_old)
 
             u_tmp = (Aty + div(vh, vv)).flatten()
-            u, _ = cg(AtA, u_tmp, x0=u.flatten(), atol=tol_cg)
+            u, _ = cg(AtA, u_tmp, x0=u.flatten(), tol=tol_cg)
             u = u.reshape((n, m))
             self.u = u
 

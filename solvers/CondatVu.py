@@ -24,12 +24,12 @@ class Solver(BaseSolver):
     parameters = {'ratio': [1.],
                   'eta': [1.]}
 
-    def skip(self, A, reg, delta, data_fit, y, isotropy):
+    def skip(self, A, Anorm2, reg, delta, data_fit, y, isotropy):
         if isotropy not in ["anisotropic", "isotropic"]:
             return True, "Only aniso and isoTV are implemented yet"
         return False, None
 
-    def set_objective(self, A, reg, delta, data_fit, y, isotropy):
+    def set_objective(self, A, Anorm2, reg, delta, data_fit, y, isotropy):
         self.reg, self.delta = reg, delta
         self.isotropy = isotropy
         self.data_fit = data_fit
@@ -44,8 +44,8 @@ class Solver(BaseSolver):
         tau = 1 / (LA ** 2 / 2 + sigma_v * LD ** 2)
         eta = self.eta
         # initialisation
-        u = np.zeros((n, m))
         self.u = np.zeros((n, m))
+        u = np.zeros((n, m))
         vh = np.zeros((n, m))  # we consider non-cyclic finite difference
         vv = np.zeros((n, m))
         proj = {
